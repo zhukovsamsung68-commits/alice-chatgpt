@@ -7,22 +7,27 @@ from openai import OpenAI
 app = FastAPI()
 
 client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY")
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    timeout=3.2,
+    max_retries=0
 )
 
 
 @app.get("/")
 def home():
-    return {"status": "ok", "service": "alice-chatgpt"}
+    return {
+        "status": "ok",
+        "service": "alice-chatgpt"
+    }
 
 
 @app.post("/")
 async def alice_webhook(request: Request):
-
     try:
         data = await request.json()
 
         alice_request = data.get("request") or {}
+
         user_text = alice_request.get(
             "original_utterance",
             ""
@@ -42,21 +47,21 @@ async def alice_webhook(request: Request):
         answer = response.output_text.strip()
 
         if not answer:
-            answer = "Не удалось получить ответ."
+            return alice_response(
+                "Не удалось получить ответ."
+            )
 
         return alice_response(answer)
 
     except Exception as e:
-
         print("ERROR:", repr(e))
 
         return alice_response(
-            "Произошла ошибка при обращении к ChatGPT."
+            "Не успел получить ответ. Попробуйте ещё раз."
         )
 
 
 def alice_response(text):
-
     return JSONResponse(
         content={
             "version": "1.0",
